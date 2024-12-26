@@ -1,0 +1,32 @@
+{
+    "manifest_version": 3,
+    "name": "Aesop -- Read aloud text to speech with natural voice",
+    "description": "Chrome extension to read aloud any text with a natural voice.",
+    "version": "1.0",
+    "icons": {
+        "16": "images/icon16.png",
+        "32": "images/icon32.png",
+        "48": "images/icon48.png",
+        "128": "images/icon128.png"
+    },
+    "background": {
+        "service_worker": "background.js"
+    },
+    "side_panel": {
+        "default_path": "sidepanel.html"
+    },
+    
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>"],
+            "js": ["content.js"],
+            "css": ["content.css"]
+        }
+    ],
+    
+    "permissions": ["sidePanel", "contextMenus", "storage"],
+    
+    "content_security_policy": {
+        "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+    }
+}
