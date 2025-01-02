@@ -125,6 +125,7 @@ function onSelectedTextUpdate(selectedText) {
 //     audioPlayer = new AudioPlayer(document.querySelector('.audio-player'))
 // });
 
+document.getElementById('speedBtn').addEventListener('click', changeSpeed);
 function changeSpeed(e) {
     const speedBtn = document.getElementById('speedBtn')
     const speeds = [1, 1.25, 1.5, 1.75, 2];
