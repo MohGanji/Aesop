@@ -1,32 +1,306 @@
 const DRAGGABLE = 'draggable'
 const PLAY_PAUSE = 'play-pause'
+const ID_PLAY_ICON = 'play-icon'
+const ID_PAUSE_ICON = 'pause-icon'
 const SPEED_BTN = 'speed-btn'
-
-const _states = new Map();
-
-const useState = (value,context) => {
-    const dispatch = v => {
-            const currentState = _states.get(context.callee);
-            currentState[0] = typeof v === 'function' ? v(currentState[0]) : v        
-            // we re-call the function with the same arguments it was originally called with - "re-rendering it" of sorts...
-            context.callee.call(context);    
-    }
-    const current = _states.get(context.callee) || [value,dispatch];
-    _states.set(context.callee,current);
-    return current;
-}
-
-// TODO: use this to update UI and know when to play or pause to avoid repeat.
-const [isPlaying, setIsPlaying] = useState(false) 
-
-function getCurrentSpeed() {
-    return Number(document.querySelector(`.${SPEED_BTN}`).textContent.replace('x', ''))
-}
-
 
 // AUDIO PLAYER JS
 
 const SERVER_BASE_URL = 'http://localhost:5005'
+
+class AudioPlayer {
+    constructor() {
+        /**
+         * @private
+         * @type {string}
+         */
+        this._text = ""
+        /**
+         * @private
+         * @type {{ text: string; start: number; end: number }[]}
+         */
+        this._chunks = []
+        /**
+         * @private
+         * @type {number}
+         */
+        this._currentChunk = 0
+        /**
+         * @public
+         * @type {boolean}
+         */
+        this.isPlaying = false
+        /**
+         * @private
+         * @type {'TTS' | 'NATURAL'}
+         */
+        this._mode = "TTS" 
+
+        /**
+         * @private
+         * @type {0.5 | 0.75 | 1 | 1.25 | 1.5 | 1.75 | 2}
+         */
+        this._speed = 1
+
+        /**
+         * @private
+         * @type {string}
+         */
+        this._naturalVoiceId = "JBFqnCBsd6RMkjVDRZzb"
+
+        /**
+         * this indicates if we have a tts utterance currently being played
+         * @private
+         * @type {SpeechSynthesisUtterance | null}
+         */
+        this._currentTTSUtterance = null
+
+        /**
+         * this indicates if we have a tts utterance currently being played
+         * @private
+         * @type {{ctx: AudioContext, src: AudioBufferSourceNode} | null}
+         */
+        this._currentNaturalSource = null
+        this._synth = new Tone.Synth().toDestination();
+    }
+
+    /**
+     * @public
+     * @param {string} text 
+     * @returns {{ text: string; start: number; end: number }[]}
+     */
+    setText(text) {
+        this._text = text
+        this._chunks = this._splitTextIntoChunks(text)
+        this._currentChunk = 0
+    }
+
+    /**
+     * @public
+     * @param {0.5 | 0.75 | 1 | 1.25 | 1.5 | 1.75 | 2} speed 
+     */
+    setSpeed(speed) {
+        this._speed = speed
+        if(this._currentTTSUtterance) {
+            this._currentTTSUtterance.rate = this._speed
+        }
+        if(this._currentNaturalSource) {
+            this._currentNaturalSource.src.playbackRate.value = this._speed
+        }
+        playPause()
+        playPause()
+    }
+
+    /**
+     * @public
+     * @param {'TTS' | 'NATURAL'} mode 
+     */
+    setMode(mode) {
+        this._mode = mode
+    }
+
+    /**
+     * play if not playing, pause if playing.
+     * @public
+     * @returns {boolean}
+     */
+    playPause() {
+        console.log(this.isPlaying, this._currentChunk, this._text, this._chunks)
+        if (this.isPlaying) {
+            this.isPlaying = false
+            if(this._mode === "TTS" && this._currentTTSUtterance) {
+                window.speechSynthesis.pause()
+            } else if (this._mode === 'NATURAL' && this._currentNaturalSource) {
+                this._currentNaturalSource.ctx.suspend()
+            }
+        } else {
+            this.isPlaying = true
+            this._playCurrentChunk()
+        }
+        return this.isPlaying
+    }
+
+    /**
+     * @private
+     * @param {string} text 
+     * @returns {{ text: string; start: number; end: number }[]}
+     */
+    _splitTextIntoChunks (text) {
+        const matches = text.matchAll(/[^.!?;:\n]+([.!?;:\n]+|$)/g)
+        return Array.from(matches).map((match) => ({
+        text: match[0],
+        start: match.index,
+        end: match.index + match[0].length
+        }))
+    }
+
+    /**
+     * @private
+     * @param {{ text: string; start: number; end: number }} chunk 
+     * @returns {void}
+     */
+    _playCurrentChunk() {
+        if(!this.isPlaying) {
+            console.log('isPlaying == false')
+            return
+        }
+        if(this._currentChunk >= this._chunks.length) {
+            console.log('reached last chunk.')
+            this.onEnd()
+            return
+        }
+        const chunk = this._chunks[this._currentChunk]
+        if(this._mode == 'TTS') {
+            this._playTTS(chunk)
+        } else {
+            this._playNatural(chunk)
+        }
+    }
+
+    /**
+     * @private
+     * @param {{ text: string; start: number; end: number }} chunk 
+     * @returns {void}
+     */
+    _playTTS(chunk) {
+        console.log('starting to play tts', this._currentChunk, this._currentTTSUtterance, chunk)
+        if(this._currentTTSUtterance) {
+            window.speechSynthesis.resume()
+            return
+        }
+        this._currentTTSUtterance = new SpeechSynthesisUtterance(chunk.text)
+        this._currentTTSUtterance.rate = this._speed
+
+        this._currentTTSUtterance.onstart = () => {
+            console.log(`Started speaking chunk ${this._currentChunk + 1} of ${this._chunks.length}`)
+            // You can add any UI updates or event triggers here
+        }
+        this._currentTTSUtterance.onend = () => {
+            console.log(`Finished speaking chunk ${this._currentChunk + 1} of ${this._chunks.length}`)
+            this._currentTTSUtterance = null
+            this._currentChunk++
+            this._playCurrentChunk()
+        }
+        this._currentTTSUtterance.onerror = (event) => {
+            this._currentTTSUtterance = null
+            console.error('TTS Error:', event)
+            this.onError(event)
+            alert("Failed to generate speech. Something's gone wrong, please try again.")
+        }
+
+        window.speechSynthesis.speak(this._currentTTSUtterance)
+    }
+
+    /**
+     * @private
+     * @param {{ text: string; start: number; end: number }} chunk 
+     * @returns {void}
+     */
+    async _playNatural (chunk) {
+        if(this._currentNaturalSource) {
+            this._currentNaturalSource.ctx.resume()
+            console.log(this._currentNaturalSource)
+            return
+        }
+        
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+        let source = null
+
+        try {
+            const response = await fetch(`${SERVER_BASE_URL}/tts`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    text: chunk.text,
+                    voice_id: this._naturalVoiceId, // Default voice ID (George)
+                }),
+            })
+
+            if (!response.ok) {
+                throw new Error('Failed to generate speech')
+            }
+
+            const arrayBuffer = await response.arrayBuffer()
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+
+            source = audioContext.createBufferSource()
+            // TODO: try using a hidden audio element, loading this buffer source into it and playing that.
+            
+            source.buffer = audioBuffer
+            source.connect(audioContext.destination)
+            source.playbackRate.value = this._speed
+            this._currentNaturalSource = {ctx: audioContext, src: source}
+            source.start()
+
+            source.onended = () => {
+                console.log(`Finished speaking chunk ${this._currentChunk + 1} of ${this._chunks.length}`)
+                this._currentNaturalSource = null
+                this._currentChunk++
+                this._playCurrentChunk()
+            }
+            source.onerror = (event) => {
+                this._currentNaturalSource = null
+                console.error('Natural Voice Player Error:', event)
+                this.onError(event)
+                alert("Failed to play voice. Something's gone wrong, please try again.")
+            }
+
+            if(!this.isPlaying) {
+                // console.log('is paused but in here', this.isPlaying, this._currentNaturalSource.ctx.state, this._currentNaturalSource)
+                this._currentNaturalSource.ctx.suspend()
+                return
+            }
+            
+        } catch (error) {
+            this._currentNaturalSource = null
+            console.error('Natural Voice Server Error:', error)
+            this.onError(error)
+            alert("Failed to generate speech. Something's gone wrong, please try again.")
+        }
+    }
+
+    /**
+     * handle cases when error happens. 
+     * Ideally this should dispatch an event and UI element should subscribe to it. But for now since we only have once instance, we handle everything here.
+     * @param {string} error 
+     * @returns {{error: string, isPlaying: boolean}}
+     */
+    onError(error) {
+        this.isPlaying = false
+        
+        // Handle any consequences here.
+        updatePlayPauseIcon(this.isPlaying)
+        
+        return {error, isPlaying: this.isPlaying}
+    }
+
+    /**
+     * handle cases when voice ends. 
+     * Ideally this should dispatch an event and UI element should subscribe to it. But for now since we only have once instance, we handle everything here.
+     * @returns {{isPlaying: boolean}}
+     */
+    onEnd() {
+        this.isPlaying = false
+        
+        // Handle any consequences here.
+        updatePlayPauseIcon(this.isPlaying)
+        
+    }
+}
+
+var audioPlayer = new AudioPlayer()
+
+// audioPlayer.setMode("NATURAL")
+audioPlayer.setText("Hello beautiful people of vancouver in this rainy night. I'm Aesop, your helpful voice assistant with the ability to read to you in a natural voice. Let me know how I can help you.")
+
+function updatePlayPauseIcon(isPlaying) {
+    document.getElementById(ID_PAUSE_ICON).setAttribute('class', isPlaying ? '' : 'hidden')
+    document.getElementById(ID_PLAY_ICON).setAttribute('class', isPlaying ? 'hidden' : '')
+}
+
+function getCurrentSpeed() {
+    return Number(document.querySelector(`.${SPEED_BTN}`).textContent.replace('x', ''))
+}
 
 // chrome.storage.session.get('selectionText', (keys) => {
 //     onSelectedTextUpdate(keys.selectionText)
@@ -45,113 +319,8 @@ const SERVER_BASE_URL = 'http://localhost:5005'
 function onSelectedTextUpdate(selectedText) {
     if (!selectedText) return;    
     document.getElementById('selected-text').innerHTML = selectedText
-    
-    let chunks = splitTextIntoChunks(selectedText)
-    // playNaturalVoice(chunks)
-    playTTS(chunks, () => {setIsPlaying(false)})
+    audioPlayer.setText(selectedText)    
 }
-
-/**
- * 
- * @param {string} text 
- * @returns {{ text: string; start: number; end: number }[]}
- */
-  const splitTextIntoChunks = (text) => {
-    const matches = text.matchAll(/[^.!?;:\n]+([.!?;:\n]+|$)/g)
-    return Array.from(matches).map(match => ({
-      text: match[0],
-      start: match.index,
-      end: match.index + match[0].length
-    }))
-  }
-
-  /**
-   * @param {{ text: string; start: number; end: number }[]} chunks 
-   */
-  const playTTS = (chunks, callback) => {
-    let currentChunkIndex = 0
-  
-    const speakNextChunk = () => {
-      if (currentChunkIndex < chunks.length) {
-        const utterThis = new SpeechSynthesisUtterance(chunks[currentChunkIndex].text)
-        utterThis.rate = getCurrentSpeed()
-
-        utterThis.onstart = () => {
-          console.log(`Started speaking chunk ${currentChunkIndex + 1} of ${chunks.length}`)
-          // You can add any UI updates or event triggers here
-        }
-  
-        utterThis.onend = () => {
-          console.log(`Finished speaking chunk ${currentChunkIndex + 1} of ${chunks.length}`)
-          currentChunkIndex++
-          speakNextChunk()
-        }
-  
-        utterThis.onerror = (event) => {
-          console.error('TTS Error:', event)
-          currentChunkIndex++
-        // speakNextChunk()
-        }
-  
-        window.speechSynthesis.speak(utterThis)
-      } else {
-        console.log('Finished speaking all chunks')
-        callback()
-        // You can add any completion logic here
-      }
-    }
-    speakNextChunk()
-  }
-  
-    /**
-   * @param {{ text: string; start: number; end: number }[]} chunks 
-   */
-  const playNaturalVoice = async (chunks) => {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-    let source = null
-
-    for (let i = 0; i < chunks.length; i++) {
-      try {
-        const response = await fetch(`${SERVER_BASE_URL}/tts`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            text: chunks[i].text,
-            voice_id: "JBFqnCBsd6RMkjVDRZzb", // Default voice ID (George)
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to generate speech')
-        }
-
-        const arrayBuffer = await response.arrayBuffer()
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
-
-        source = audioContext.createBufferSource()
-        source.buffer = audioBuffer
-        source.connect(audioContext.destination)
-        source.playbackRate = Number(document.getElementById('speedBtn').innerHTML.replaceAll(/x/g, ''))
-        source.start()
-
-        await new Promise((resolve) => {
-          source.onended = resolve
-        })
-
-      } catch (error) {
-        console.error('Server Error:', error)
-        alert("Failed to generate speech. Something's gone wrong, please try again.")
-        break
-      }
-    }
-
-  }
-
-// END AUDIO PLAYER JS
-
-
 
 function newDiv(className, innerHTML) {
     const div = document.createElement('div')
@@ -168,10 +337,10 @@ function createDraggableDiv() {
     div.style.right = '20px';
     
     div.appendChild(newDiv(PLAY_PAUSE, `
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="play-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="play-icon" class="">
             <polygon points="6 3 21 12 6 21"></polygon>
         </svg>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pause-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="pause-icon" class="hidden">
             <rect x="6" y="4" width="4" height="16"></rect>
             <rect x="14" y="4" width="4" height="16"></rect>
         </svg>
@@ -214,17 +383,15 @@ function changeSpeed(e) {
     const currentIndex = speeds.indexOf(currentSpeed);
     const nextIndex = (currentIndex + 1) % speeds.length;
     const newSpeed = speeds[nextIndex];
+    audioPlayer.setSpeed(newSpeed)
     
     speedBtn.textContent = `${newSpeed}x`;
 }
 
 document.querySelector(`.${PLAY_PAUSE}`).addEventListener('click', playPause);
 function playPause(e) {
-    if (!isPlaying) {
-        setIsPlaying(true)
-        playTTS(splitTextIntoChunks("Hello there. I'm Aesop."))
-    } else {
-    }
+    
+    updatePlayPauseIcon(audioPlayer.playPause())
 }
 
 
