@@ -70,9 +70,21 @@ class AudioPlayer {
      * @returns {{ text: string; start: number; end: number }[]}
      */
     setText(text) {
+        this._reset()
         this._text = text
         this._chunks = this._splitTextIntoChunks(text)
+
+    }
+
+    _reset() {
+        this.isPlaying = false
+        this._text = ""
+        this._chunks = []
         this._currentChunk = 0
+        this._currentNaturalSource = null
+        this._currentTTSUtterance = null
+
+        updatePlayPauseIcon(this.isPlaying)
     }
 
     /**
@@ -278,24 +290,18 @@ class AudioPlayer {
      * @returns {{isPlaying: boolean}}
      */
     onEnd() {
-        this.isPlaying = false
-        this._text = ""
-        this._chunks = []
-        this._currentChunk = 0
-        this._currentNaturalSource = null
-        this._currentTTSUtterance = null
-        
+        this._reset()
         // Handle any consequences here.
         updatePlayPauseIcon(this.isPlaying)
-        
     }
 }
 
+/** @type {AudioPlayer} */
 var audioPlayer = new AudioPlayer()
 
 audioPlayer.setMode("NATURAL")
 // audioPlayer.setText("Explora las SUVs, roadsters y autos en venta que Mazda México tiene para ti. Elige tu vehículo ideal, configúralo, cotízalo y ¡estrénalo ya!")
-audioPlayer.setText("Hello beautiful people of vancouver in this rainy night. I'm Aesop, your helpful voice assistant with the ability to read to you in a natural voice. Let me know how I can help you.")
+// audioPlayer.setText("Hello beautiful people of vancouver in this rainy night. I'm Aesop, your helpful voice assistant with the ability to read to you in a natural voice. Let me know how I can help you.")
 
 function updatePlayPauseIcon(isPlaying) {
     document.getElementById(ID_PAUSE_ICON).setAttribute('class', isPlaying ? '' : 'hidden')
@@ -306,24 +312,25 @@ function getCurrentSpeed() {
     return Number(document.querySelector(`.${SPEED_BTN}`).textContent.replace('x', ''))
 }
 
-// chrome.storage.session.get('selectionText', (keys) => {
+// chrome.storage.session.get(['selectionText'], (keys) => {
 //     onSelectedTextUpdate(keys.selectionText)
 // });
 
-// chrome.storage.session.onChanged.addListener((changes) => {
-//     const selectedTextChange = changes['selectionText'];
+if (chrome.runtime) {
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.type === "selectedText") {
+            console.log("Received selected text:", message.text);
+            onSelectedTextUpdate(message.text)
+        }
+    });
     
-//     if (!selectedTextChange) {
-//         return;
-//     }
-    
-//     onSelectedTextUpdate(selectedTextChange.newValue);
-// });
+}
 
-function onSelectedTextUpdate(selectedText) {
-    if (!selectedText) return;    
-    document.getElementById('selected-text').innerHTML = selectedText
-    audioPlayer.setText(selectedText)    
+function onSelectedTextUpdate(newText) {
+    if (!newText) return;    
+    
+    audioPlayer.setText(newText)
+    updatePlayPauseIcon(audioPlayer.playPause())
 }
 
 function newDiv(className, innerHTML) {
@@ -352,12 +359,12 @@ function createDraggableDiv() {
     div.appendChild(newDiv(`${SPEED_BTN} unselectable`, "1x"))
     div.appendChild(newDiv(DRABBALE_ICON, `
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="draggable-icon" class="">
-                <circle cx="8" cy="5" r="1" fill=var(--color-text-grey) />
-                <circle cx="8" cy="12" r="1" fill=var(--color-text-grey) />
-                <circle cx="8" cy="19" r="1" fill=var(--color-text-grey) />
-                <circle cx="16" cy="5" r="1" fill=var(--color-text-grey) />
-                <circle cx="16" cy="12" r="1" fill=var(--color-text-grey) />
-                <circle cx="16" cy="19" r="1" fill=var(--color-text-grey) />
+                <circle cx="8" cy="5" r="1" fill=var(--aesop-color-cta-grey) />
+                <circle cx="8" cy="12" r="1" fill=var(--aesop-color-cta-grey) />
+                <circle cx="8" cy="19" r="1" fill=var(--aesop-color-cta-grey) />
+                <circle cx="16" cy="5" r="1" fill=var(--aesop-color-cta-grey) />
+                <circle cx="16" cy="12" r="1" fill=var(--aesop-color-cta-grey) />
+                <circle cx="16" cy="19" r="1" fill=var(--aesop-color-cta-grey) />
         </svg>
     `))
 

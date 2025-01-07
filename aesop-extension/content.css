@@ -1,12 +1,12 @@
 :root {
-    --color-bg: #292e1eee;
-    --color-bg-2: #ececec22;
-    --color-cta: #FA9048;
-    --color-cta-2: #ca1551;
-    --color-text: #eeeeee;
-    --color-text-grey: #999999;
-    --color-emph: #03cea4;
-    --color-emph-2: #345995;
+    --aesop-color-bg: #292e1eee;
+    --aesop-color-bg-2: #ececec22;
+    --aesop-color-cta: #FA9048;
+    --aesop-color-cta-2: #ca1551;
+    --aesop-color-cta: #eeeeee;
+    --aesop-color-cta-grey: #999999;
+    --aesop-color-emph: #03cea4;
+    --aesop-color-emph-2: #345995;
 
     --font: 'Lucida Sans', 'Lucida Sans Regular', 'Lucida Grande', 'Lucida Sans Unicode', Geneva, Verdana, sans-serif;
 }
@@ -17,11 +17,11 @@
     position: absolute !important;
     display: flex;
     flex-direction: column;
-    width: 40px;
+    width: 44px;
     height: 124px;
-    background-color: var(--color-bg);
+    background-color: var(--aesop-color-bg);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    border: 2px solid var(--color-emph-2);
+    border: 2px solid var(--aesop-color-emph-2);
     border-radius: 50px;
     opacity: 0.9;
     /* cursor: grab; */
@@ -33,9 +33,9 @@
 } */
 
 .play-pause {
-    background-color: var(--url-color);
-    color: var(--color-text);
-    border: 1px solid var(--url-color);
+    background-color: var(--aesop-color-bg);
+    color: var(--aesop-color-cta);
+    border: 1px solid var(--aesop-color-bg);
     border-radius: 50%;
     width: 40px;
     height: 40px;
@@ -47,8 +47,8 @@
 }
 
 .draggable-icon {
-    background-color: var(--url-color);
-    color: var(--color-text-grey);
+    background-color: var(--aesop-color-bg);
+    color: var(--aesop-color-cta-grey);
     border-radius: 50%;
     width: 40px;
     height: 40px;
@@ -67,8 +67,8 @@
 }
 
 .play-pause:hover {
-    background-color: var(--color-bg);
-    color: var(--color-cta);
+    background-color: var(--aesop-color-bg);
+    color: var(--aesop-color-cta);
 }
 
 .play-pause svg {
@@ -81,9 +81,9 @@
 }
 
 .speed-btn {
-    /* background-color: var(--color-bg); */
-    /* border: 1px solid var(--color-text); */
-    color: var(--color-text);
+    /* background-color: var(--aesop-color-bg); */
+    /* border: 1px solid var(--aesop-color-cta); */
+    color: var(--aesop-color-cta);
     cursor: pointer;
     border-radius: 50%;
     font-size: 14px;
@@ -96,8 +96,8 @@
 }
 
 .speed-btn:hover {
-    background-color: var(--color-bg);
-    color: var(--color-cta);
+    background-color: var(--aesop-color-bg);
+    color: var(--aesop-color-cta);
 }
 
 .unselectable {
