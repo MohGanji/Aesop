@@ -18,6 +18,11 @@ class AudioPlayer {
         this._text = ""
         /**
          * @private
+         * @type {HTMLElement|null}
+         */
+        this._textElement = null
+        /**
+         * @private
          * @type {{ text: string; start: number; end: number }[]}
          */
         this._chunks = []
@@ -73,7 +78,6 @@ class AudioPlayer {
         this._reset()
         this._text = text
         this._chunks = this._splitTextIntoChunks(text)
-
     }
 
     _reset() {
@@ -294,6 +298,27 @@ class AudioPlayer {
         // Handle any consequences here.
         updatePlayPauseIcon(this.isPlaying)
     }
+
+    /**
+     * @private
+     * @param {HTMLElement} textElement 
+     */
+    _setTextElement(textElement) {
+        this._textElement = textElement
+        const newText = textElement.innerText
+        this.setText(newText)
+        // TODO: handle highlighting hooks here.
+    }
+
+    /**
+     * @public
+     * @param {HTMLElement} textElement 
+     */
+    playTextElement(textElement) {
+        this._setTextElement(textElement)
+        this.playPause()
+    }
+
 }
 
 /** @type {AudioPlayer} */
@@ -316,7 +341,7 @@ function getCurrentSpeed() {
 //     onSelectedTextUpdate(keys.selectionText)
 // });
 
-if (chrome.runtime) {
+if (chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         if (message.type === "selectedText") {
             console.log("Received selected text:", message.text);
@@ -416,4 +441,64 @@ function playPause(e) {
 }
 
 
+function getPosition(element) {
+    var clientRect = element.getBoundingClientRect();
+    return {
+        left: clientRect.left + document.body.scrollLeft,
+        top: clientRect.top + document.body.scrollTop
+    };
+}
 
+function getSrcElement(e) {
+    var targ;
+	if (e.target) targ = e.target;
+	else if (e.srcElement) targ = e.srcElement;
+	if (targ.nodeType == 3) // defeat Safari bug
+		targ = targ.parentNode;
+    return targ
+}
+
+// show play button on every text element
+
+const addHoveringButtonListeners = (elem) => {
+    var hoverTimeoutId, fadeoutTimeoutId
+    elem.addEventListener('mouseover', e => {
+        const textElement = getSrcElement(e)
+        const textElementPos = getPosition(textElement)
+        const newPlayButton = newDiv('hovering-play-button', `
+            <div id="aesop-hovering-play-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="play-icon" class="">
+                    <polygon points="6 3 21 12 6 21"></polygon>
+                </svg>
+            </div>
+        `)
+        newPlayButton.style.top = textElementPos.top - 40
+        newPlayButton.style.left = textElementPos.left
+        newPlayButton.addEventListener('mouseover', e => {
+            clearTimeout(hoverTimeoutId)
+            clearTimeout(fadeoutTimeoutId)
+        })
+        newPlayButton.addEventListener('mouseleave', e => {
+            document.querySelector('.hovering-play-button').remove()
+        })
+        newPlayButton.addEventListener('click', e => {
+            audioPlayer.playTextElement(textElement)
+        })
+        
+        document.body.appendChild(newPlayButton)
+        
+        // fade it away after a few seconds
+        fadeoutTimeoutId = setTimeout(() => {
+            newPlayButton.style.opacity = '0'
+        }, 3000)
+        newPlayButton.addEventListener('transitionend', () => newPlayButton.remove());
+      });
+
+    elem.addEventListener('mouseout', e => {
+        hoverTimeoutId = setTimeout(() => {
+            document.querySelector('.hovering-play-button').remove()
+        }, 150)
+    });
+}
+
+document.querySelectorAll('p').forEach(addHoveringButtonListeners)
