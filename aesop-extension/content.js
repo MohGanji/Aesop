@@ -1,5 +1,6 @@
 const DRAGGABLE = 'draggable'
 const PLAY_PAUSE = 'play-pause'
+const DRABBALE_ICON = 'draggable-icon'
 const ID_PLAY_ICON = 'play-icon'
 const ID_PAUSE_ICON = 'pause-icon'
 const SPEED_BTN = 'speed-btn'
@@ -61,7 +62,6 @@ class AudioPlayer {
          * @type {{ctx: AudioContext, src: AudioBufferSourceNode} | null}
          */
         this._currentNaturalSource = null
-        this._synth = new Tone.Synth().toDestination();
     }
 
     /**
@@ -224,11 +224,9 @@ class AudioPlayer {
             const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
 
             source = audioContext.createBufferSource()
-            // TODO: try using a hidden audio element, loading this buffer source into it and playing that.
-            
             source.buffer = audioBuffer
             source.connect(audioContext.destination)
-            source.playbackRate.value = this._speed
+            // source.playbackRate.value = this._speed
             this._currentNaturalSource = {ctx: audioContext, src: source}
             source.start()
 
@@ -281,6 +279,11 @@ class AudioPlayer {
      */
     onEnd() {
         this.isPlaying = false
+        this._text = ""
+        this._chunks = []
+        this._currentChunk = 0
+        this._currentNaturalSource = null
+        this._currentTTSUtterance = null
         
         // Handle any consequences here.
         updatePlayPauseIcon(this.isPlaying)
@@ -290,7 +293,8 @@ class AudioPlayer {
 
 var audioPlayer = new AudioPlayer()
 
-// audioPlayer.setMode("NATURAL")
+audioPlayer.setMode("NATURAL")
+// audioPlayer.setText("Explora las SUVs, roadsters y autos en venta que Mazda México tiene para ti. Elige tu vehículo ideal, configúralo, cotízalo y ¡estrénalo ya!")
 audioPlayer.setText("Hello beautiful people of vancouver in this rainy night. I'm Aesop, your helpful voice assistant with the ability to read to you in a natural voice. Let me know how I can help you.")
 
 function updatePlayPauseIcon(isPlaying) {
@@ -346,6 +350,16 @@ function createDraggableDiv() {
         </svg>
     `))
     div.appendChild(newDiv(`${SPEED_BTN} unselectable`, "1x"))
+    div.appendChild(newDiv(DRABBALE_ICON, `
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="draggable-icon" class="">
+                <circle cx="8" cy="5" r="1" fill=var(--color-text-grey) />
+                <circle cx="8" cy="12" r="1" fill=var(--color-text-grey) />
+                <circle cx="8" cy="19" r="1" fill=var(--color-text-grey) />
+                <circle cx="16" cy="5" r="1" fill=var(--color-text-grey) />
+                <circle cx="16" cy="12" r="1" fill=var(--color-text-grey) />
+                <circle cx="16" cy="19" r="1" fill=var(--color-text-grey) />
+        </svg>
+    `))
 
     // Add event listeners for dragging
     let isDragging = false;

@@ -4,6 +4,7 @@
     --color-cta: #FA9048;
     --color-cta-2: #ca1551;
     --color-text: #eeeeee;
+    --color-text-grey: #999999;
     --color-emph: #03cea4;
     --color-emph-2: #345995;
 
@@ -17,19 +18,19 @@
     display: flex;
     flex-direction: column;
     width: 40px;
-    height: 120px;
+    height: 124px;
     background-color: var(--color-bg);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
     border: 2px solid var(--color-emph-2);
     border-radius: 50px;
     opacity: 0.9;
-    cursor: grab;
+    /* cursor: grab; */
     z-index: 1000;
 }
 
-.draggable:active {
+/* .draggable:active {
     cursor: grabbing;
-}
+} */
 
 .play-pause {
     background-color: var(--url-color);
@@ -43,6 +44,26 @@
     align-items: center;
     justify-content: center;
     padding: 0;
+}
+
+.draggable-icon {
+    background-color: var(--url-color);
+    color: var(--color-text-grey);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: grab;
+}
+.draggable-icon:active {
+    cursor: grabbing;
+}
+.draggable-icon svg {
+    width: 20px;
+    height: 20px;
 }
 
 .play-pause:hover {
@@ -71,6 +92,7 @@
     height: 40px;
     line-height: 40px;
     text-align: center;
+    /* display: none; */
 }
 
 .speed-btn:hover {
