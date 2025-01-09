@@ -434,11 +434,36 @@ function changeSpeed(e) {
     speedBtn.textContent = `${newSpeed}x`;
 }
 
-document.querySelector(`.${PLAY_PAUSE}`).addEventListener('click', playPause);
-function playPause(e) {
-    
-    updatePlayPauseIcon(audioPlayer.playPause())
+function getSelectionText() {
+    let text = "";
+    const activeEl = document.activeElement;
+    const activeElTagName = activeEl ? activeEl.tagName.toLowerCase() : null;
+
+    if (
+      (activeElTagName == "textarea") || (activeElTagName == "input" &&
+      /^(?:text|search|password|tel|url)$/i.test(activeEl.type)) &&
+      (typeof activeEl.selectionStart == "number")
+    ) {
+        text = activeEl.value.slice(activeEl.selectionStart, activeEl.selectionEnd);
+    } else if (window.getSelection) {
+        text = window.getSelection().toString();
+    }
+
+    return text;
 }
+
+const playPauseButton = document.querySelector(`.${PLAY_PAUSE}`)
+playPauseButton.addEventListener('mousedown', () => {
+    const selectedText = getSelectionText()
+
+    playPauseButton.addEventListener('click', () => { 
+        if(selectedText !== "") {
+            console.log('selection is not empty', selectedText)
+            audioPlayer.setText(selectedText)
+        }
+        updatePlayPauseIcon(audioPlayer.playPause())
+    }, { once: true })
+});
 
 
 function getPosition(element) {
