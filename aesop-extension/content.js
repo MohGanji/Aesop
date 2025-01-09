@@ -469,8 +469,8 @@ playPauseButton.addEventListener('mousedown', () => {
 function getPosition(element) {
     var clientRect = element.getBoundingClientRect();
     return {
-        left: clientRect.left + document.body.scrollLeft,
-        top: clientRect.top + document.body.scrollTop
+        left: clientRect.left + (document.body.scrollLeft ? document.body.scrollLeft : window.scrollX),
+        top: clientRect.top + (document.body.scrollTop ? document.body.scrollTop : window.scrollY)
     };
 }
 
@@ -484,27 +484,34 @@ function getSrcElement(e) {
 }
 
 // show play button on every text element
+var isMouseOverMap = {}
 
-const addHoveringButtonListeners = (elem) => {
-    var hoverTimeoutId, fadeoutTimeoutId
-    elem.addEventListener('mouseover', e => {
+document.addEventListener('mouseover', (e) => {
+    console.log('mouseover', e.target.tagName.toLowerCase())
+    // if(isMouseOverMap[e.target]) return
+    // isMouseOverMap[e.target] = true
+    // only if we are going into a p from an element that is not its child
+    if (e.target.tagName.toLowerCase() === 'p') { 
+        console.log('is really in', e.target.tagName.toLowerCase())
+        // if (e.relatedTarget && e.target.contains(e.relatedTarget)) return
+
         const textElement = getSrcElement(e)
         const textElementPos = getPosition(textElement)
         const newPlayButton = newDiv('hovering-play-button', `
-            <div id="aesop-hovering-play-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="play-icon" class="">
-                    <polygon points="6 3 21 12 6 21"></polygon>
-                </svg>
-            </div>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="play-icon" class="">
+                <polygon points="6 3 21 12 6 21"></polygon>
+            </svg>
         `)
-        newPlayButton.style.top = textElementPos.top - 40
-        newPlayButton.style.left = textElementPos.left
+
+        newPlayButton.style.top = `${textElementPos.top - 20}px`
+        newPlayButton.style.left = `${textElementPos.left}px`
         newPlayButton.addEventListener('mouseover', e => {
             clearTimeout(hoverTimeoutId)
             clearTimeout(fadeoutTimeoutId)
         })
         newPlayButton.addEventListener('mouseleave', e => {
-            document.querySelector('.hovering-play-button').remove()
+            const hoveringButtonElem = document.querySelector('.hovering-play-button')
+            if(hoveringButtonElem) hoveringButtonElem.remove()
         })
         newPlayButton.addEventListener('click', e => {
             audioPlayer.playTextElement(textElement)
@@ -515,15 +522,22 @@ const addHoveringButtonListeners = (elem) => {
         // fade it away after a few seconds
         fadeoutTimeoutId = setTimeout(() => {
             newPlayButton.style.opacity = '0'
-        }, 3000)
-        newPlayButton.addEventListener('transitionend', () => newPlayButton.remove());
-      });
+        }, 4000)
+        newPlayButton.addEventListener('transitionend', () => newPlayButton.remove());   
+    }
+});
 
-    elem.addEventListener('mouseout', e => {
+document.addEventListener('mouseout', function (e) {
+    console.log('mouseout', e.target.tagName.toLowerCase())
+
+    // only when not exiting to its children
+    if (e.target.tagName.toLowerCase() === 'p' && (!e.relatedTarget || !e.target.contains(e.relatedTarget))) { // Replace 'div' with the tag name you want
+        console.log('is really out', e.target.tagName.toLowerCase())
+        // isMouseOverMap[e.target] = undefined
+
         hoverTimeoutId = setTimeout(() => {
-            document.querySelector('.hovering-play-button').remove()
+            const hoveringButton = document.querySelector('.hovering-play-button')
+            if (hoveringButton) hoveringButton.remove()
         }, 150)
-    });
-}
-
-document.querySelectorAll('p').forEach(addHoveringButtonListeners)
+    }
+});
