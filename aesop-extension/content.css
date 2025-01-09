@@ -11,9 +11,10 @@
 }
 
 .draggable {
+    box-sizing: content-box;
     font-family: var(--font);
     overflow: hidden;
-    position: absolute !important;
+    position: fixed !important;
     display: flex;
     flex-direction: column;
     width: 40px;
